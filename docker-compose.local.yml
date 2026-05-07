@@ -64,6 +64,7 @@ services:
       - '3001:3001'
     volumes:
       - ./logs/auth:/app/logs
+    restart: on-failure
     networks:
       - app-network
 
@@ -83,6 +84,7 @@ services:
       - '3002:3002'
     volumes:
       - ./logs/hotel:/app/logs
+    restart: on-failure
     networks:
       - app-network
 
@@ -100,6 +102,7 @@ services:
       - '3003:3003'
     volumes:
       - ./logs/booking:/app/logs
+    restart: on-failure
     networks:
       - app-network
 
@@ -119,6 +122,7 @@ services:
       - '3004:3004'
     volumes:
       - ./logs/review:/app/logs
+    restart: on-failure
     networks:
       - app-network
 
@@ -135,6 +139,7 @@ services:
       - hotel-service
       - booking-service
       - review-service
+    restart: on-failure
     networks:
       - app-network
 
