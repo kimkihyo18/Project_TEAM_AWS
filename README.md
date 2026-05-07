@@ -37,9 +37,41 @@
 
 ## 로컬 테스트
 
-### 사전 준비
+### 사전 준비 — Docker Desktop 설치
 
-- Docker Desktop 설치 및 실행
+#### 1. 다운로드
+
+[https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/) 접속 → **Download for Windows** 클릭
+
+#### 2. 설치
+
+1. 다운로드된 `Docker Desktop Installer.exe` 실행
+2. "Use WSL 2 instead of Hyper-V" 체크 (권장)
+3. **Ok** → 설치 완료 후 PC 재시작
+
+#### 3. WSL 2 설정 (설치 후 오류 나는 경우)
+
+PowerShell을 **관리자 권한**으로 열고:
+
+```powershell
+wsl --install
+wsl --set-default-version 2
+```
+
+재시작 후 Docker Desktop 다시 실행
+
+#### 4. 실행 확인
+
+Docker Desktop 앱 실행 후 트레이 아이콘이 초록색이면 정상.
+
+```bash
+docker --version
+docker compose version
+```
+
+> **Windows 요구사양**: Windows 10 21H2 이상 또는 Windows 11, WSL 2 지원 CPU
+
+---
 
 ### 1. 컨테이너 빌드 및 실행
 
