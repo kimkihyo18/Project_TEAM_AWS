@@ -8,6 +8,7 @@ export interface RoomDetail {
   host_id: string;
   hotel_name: string;
   hotel_address: string;
+  hotel_images: string;
   name: string;
   type: string;
   capacity: number;

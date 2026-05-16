@@ -11,6 +11,7 @@ export async function initializeDatabase(): Promise<void> {
         hotel_id         VARCHAR(36)   NOT NULL,
         hotel_name       VARCHAR(255)  NOT NULL DEFAULT '',
         hotel_address    TEXT,
+        hotel_images     TEXT,
         room_id          VARCHAR(36)   NOT NULL,
         room_name        VARCHAR(255)  NOT NULL DEFAULT '',
         room_type        VARCHAR(50)   NOT NULL DEFAULT 'standard',

@@ -61,12 +61,13 @@ export async function createBooking(req: Request, res: Response): Promise<void> 
 
     await pool.query(
       `INSERT INTO bookings
-        (id, user_id, host_id, hotel_id, hotel_name, hotel_address, room_id, room_name, room_type,
+        (id, user_id, host_id, hotel_id, hotel_name, hotel_address, hotel_images, room_id, room_name, room_type,
          check_in_date, check_out_date, guests, total_price, status, special_requests)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)`,
       [
         bookingId, userId, room.host_id, hotel_id,
         room.hotel_name, room.hotel_address ?? '',
+        room.hotel_images ?? null,
         room_id, room.name, room.type,
         check_in_date, check_out_date, guests, totalPrice,
         special_requests ?? null,

@@ -352,7 +352,7 @@ export async function getInternalRoom(req: Request, res: Response): Promise<void
     const { hotelId, roomId } = req.params;
 
     const [hotelRows] = await pool.query<RowDataPacket[]>(
-      'SELECT id, host_id, name, address FROM hotels WHERE id = ?', [hotelId]
+      'SELECT id, host_id, name, address, images FROM hotels WHERE id = ?', [hotelId]
     );
     const hotel = (hotelRows as RowDataPacket[])[0] as (Hotel & { host_id: string }) | undefined;
     if (!hotel) {
@@ -373,10 +373,11 @@ export async function getInternalRoom(req: Request, res: Response): Promise<void
       success: true,
       data: {
         ...room,
-        host_id:      hotel.host_id,
-        hotel_name:   hotel.name,
+        host_id:       hotel.host_id,
+        hotel_name:    hotel.name,
         hotel_address: hotel.address,
-        is_available: Boolean(room.is_available),
+        hotel_images:  hotel.images,
+        is_available:  Boolean(room.is_available),
       },
     });
   } catch (error) {

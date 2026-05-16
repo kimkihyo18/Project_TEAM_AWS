@@ -294,6 +294,11 @@ sudo mkdir -p /usr/local/lib/docker/cli-plugins
 sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Docker BuildX 업데이트 (0.17.0 미만이면 compose build 오류 발생)
+sudo curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 ```
 
 ### 2-3. 프로젝트 클론 및 실행
@@ -378,11 +383,6 @@ EOF
 실행:
 
 ```bash
-# Docker BuildX 업데이트 (0.17.0 미만이면 compose build 오류 발생)
-sudo curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
-  -o /usr/local/lib/docker/cli-plugins/docker-buildx
-sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
-
 sudo docker compose -f docker-compose.auth.yml up -d --build
 
 # 시드 데이터 입력 (최초 1회) - DB 연동하지 않았을 경우, 테스트를 위한 데이터
@@ -419,6 +419,11 @@ sudo mkdir -p /usr/local/lib/docker/cli-plugins
 sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Docker BuildX 업데이트 (0.17.0 미만이면 compose build 오류 발생)
+sudo curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 ```
 
 ### 3-3. 스왑 메모리 추가 (t3.medium 이하 권장)
@@ -528,11 +533,6 @@ EOF
 실행:
 
 ```bash
-# Docker BuildX 업데이트 (0.17.0 미만이면 compose build 오류 발생)
-sudo curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
-  -o /usr/local/lib/docker/cli-plugins/docker-buildx
-sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
-
 sudo docker compose -f docker-compose.hotel.yml up -d --build
 
 # 시드 데이터 입력 (최초 1회) - DB 연동하지 않았을 경우, 테스트를 위한 데이터
@@ -543,6 +543,135 @@ sudo docker compose -f docker-compose.hotel.yml exec hotel-service npm run seed
 
 ```bash
 curl http://localhost:3002/health
+```
+
+---
+
+### 4-1. EC2 인스턴스 생성 (booking-service)
+
+| 항목 | 권장 값 |
+|------|--------|
+| AMI | Amazon Linux 2023 |
+| 인스턴스 타입 | `t3.micro` |
+| 스토리지 | 기본 8GB |
+| 보안 그룹 인바운드 | SSH 22 (내 IP), TCP 3003 (Frontend EC2 SG + review EC2 SG) |
+| 키 페어 | 기존 또는 새로 생성 |
+
+### 4-2. EC2 접속 후 환경 세팅
+
+```bash
+# Amazon Linux 2023 — Docker 설치
+sudo dnf install -y docker git
+sudo systemctl enable --now docker
+
+# Docker Compose 플러그인 설치
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Docker BuildX 업데이트 (0.17.0 미만이면 compose build 오류 발생)
+sudo curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+```
+
+### 4-3. 프로젝트 클론 및 실행
+
+```bash
+git clone https://github.com/yubin05/Project_TEAM_AWS.git
+cd Project_TEAM_AWS
+```
+
+**A. RDS 없이 로컬 MySQL로 테스트 (간단)**
+
+```bash
+cat > docker-compose.booking.yml << 'EOF'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: localpassword
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-plocalpassword']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  booking-service:
+    build:
+      context: ./services/booking-service
+      dockerfile: Dockerfile
+    env_file: ./services/booking-service/.env.local
+    ports:
+      - '3003:3003'
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+EOF
+
+# 현재 설정 파일에 EC2 프라이빗 IP 넣는 부분이 Docker-DNS로 되어 있어 수정 필요
+sed -i 's|HOTEL_SERVICE_URL=.*|HOTEL_SERVICE_URL=http://<hotel EC2 Private IP>:3002|' services/booking-service/.env.local
+```
+
+> hotel-service EC2가 떠 있어야 예약 생성 가능 (`HOTEL_SERVICE_URL` 참조)
+
+**B. RDS 연동 (EC2 배포)**
+
+`.env.aws` 작성:
+
+```bash
+cat > services/booking-service/.env.aws << 'EOF'
+APP_MODE=local
+PORT=3003
+DB_HOST=<RDS endpoint>
+DB_PORT=3306
+DB_USER=admin
+DB_PASSWORD=<비밀번호>
+DB_NAME=booking_db
+JWT_SECRET=<auth-service와 동일한 값>
+INTERNAL_SECRET=<다른 서비스들과 동일한 값>
+HOTEL_SERVICE_URL=http://<hotel EC2 Private IP>:3002
+CORS_ORIGIN=http://<Frontend EC2 Public IP>
+AWS_REGION=ap-northeast-2
+EOF
+```
+
+compose 파일:
+
+```bash
+cat > docker-compose.booking.yml << 'EOF'
+services:
+  booking-service:
+    build:
+      context: ./services/booking-service
+      dockerfile: Dockerfile
+    env_file: ./services/booking-service/.env.aws
+    ports:
+      - '3003:3003'
+    restart: on-failure
+EOF
+```
+
+실행:
+
+```bash
+sudo docker compose -f docker-compose.booking.yml up -d --build
+
+# 시드 데이터 입력 (최초 1회)
+sudo docker compose -f docker-compose.booking.yml exec booking-service npm run seed
+```
+
+### 헬스체크
+
+```bash
+curl http://localhost:3003/health
 ```
 
 ---
