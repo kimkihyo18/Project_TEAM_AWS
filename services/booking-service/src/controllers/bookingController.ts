@@ -67,7 +67,9 @@ export async function createBooking(req: Request, res: Response): Promise<void> 
       [
         bookingId, userId, room.host_id, hotel_id,
         room.hotel_name, room.hotel_address ?? '',
-        room.hotel_images ?? null,
+        room.hotel_images != null
+          ? JSON.stringify(Array.isArray(room.hotel_images) ? room.hotel_images : [room.hotel_images])
+          : null,
         room_id, room.name, room.type,
         check_in_date, check_out_date, guests, totalPrice,
         special_requests ?? null,
@@ -109,7 +111,15 @@ export async function getUserBookings(req: Request, res: Response): Promise<void
 
     const bookings = (rows as RowDataPacket[]).map(b => ({
       ...b,
-      hotel_images: b.hotel_images ? JSON.parse(b.hotel_images) : [],
+      hotel_images: (() => {
+        if (!b.hotel_images) return [];
+        try {
+          const parsed = JSON.parse(b.hotel_images);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [b.hotel_images];
+        }
+      })(),
     }));
 
     res.json({
