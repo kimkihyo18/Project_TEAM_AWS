@@ -107,10 +107,15 @@ export async function getUserBookings(req: Request, res: Response): Promise<void
     );
     const total = ((countRows as RowDataPacket[])[0] as { count: number }).count;
 
+    const bookings = (rows as RowDataPacket[]).map(b => ({
+      ...b,
+      hotel_images: b.hotel_images ? JSON.parse(b.hotel_images) : [],
+    }));
+
     res.json({
       success: true,
       data: {
-        bookings: rows,
+        bookings,
         pagination: { total, page: Number(page), limit: Number(limit), total_pages: Math.ceil(total / Number(limit)) },
       },
     });
