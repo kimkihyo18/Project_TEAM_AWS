@@ -1,11 +1,17 @@
--- ============================================================
--- 전체 시드 데이터 (auth_db / hotel_db / booking_db / review_db)
--- 실행 전 테이블이 존재해야 합니다 (서비스 최초 기동으로 자동 생성).
--- 직접 실행 시: run-seed.sh 사용 (bcrypt 해시 자동 주입)
--- ============================================================
-
--- ── auth_db ──────────────────────────────────────────────────
+CREATE DATABASE IF NOT EXISTS auth_db CHARACTER SET utf8mb4;
 USE auth_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  id            VARCHAR(36)  PRIMARY KEY,
+  email         VARCHAR(255) UNIQUE NOT NULL,
+  password      VARCHAR(255) NOT NULL,
+  name          VARCHAR(100) NOT NULL,
+  phone         VARCHAR(20),
+  profile_image TEXT,
+  role          ENUM('user','host','admin') NOT NULL DEFAULT 'user',
+  created_at    DATETIME NOT NULL DEFAULT NOW(),
+  updated_at    DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW()
+) CHARACTER SET utf8mb4;
 
 INSERT IGNORE INTO users (id, email, password, name, phone, role) VALUES
   ('11111111-0000-0000-0000-000000000001', 'admin@travel.com', '__BCRYPT_HASH__', '관리자', '010-0000-0000', 'admin'),
@@ -15,8 +21,66 @@ INSERT IGNORE INTO users (id, email, password, name, phone, role) VALUES
   ('11111111-0000-0000-0000-000000000005', 'user2@travel.com', '__BCRYPT_HASH__', '최수아', '010-4444-5555', 'user'),
   ('11111111-0000-0000-0000-000000000006', 'user3@travel.com', '__BCRYPT_HASH__', '정현우', '010-5555-6666', 'user');
 
--- ── hotel_db ─────────────────────────────────────────────────
+
+
+CREATE DATABASE IF NOT EXISTS hotel_db CHARACTER SET utf8mb4;
 USE hotel_db;
+
+CREATE TABLE IF NOT EXISTS hotels (
+  id             VARCHAR(36)  PRIMARY KEY,
+  host_id        VARCHAR(36)  NOT NULL,
+  name           VARCHAR(255) NOT NULL,
+  description    TEXT         NOT NULL,
+  category       ENUM('hotel','motel','pension','guesthouse','resort','camping') NOT NULL,
+  address        TEXT         NOT NULL,
+  city           VARCHAR(100) NOT NULL,
+  region         VARCHAR(100) NOT NULL,
+  latitude       DOUBLE,
+  longitude      DOUBLE,
+  amenities      JSON         NOT NULL,
+  images         JSON         NOT NULL,
+  check_in_time  VARCHAR(10)  NOT NULL DEFAULT '15:00',
+  check_out_time VARCHAR(10)  NOT NULL DEFAULT '11:00',
+  rating         DECIMAL(3,1) NOT NULL DEFAULT 0,
+  review_count   INT          NOT NULL DEFAULT 0,
+  is_active      TINYINT(1)   NOT NULL DEFAULT 1,
+  video_url      VARCHAR(500) NULL,
+  video_status   ENUM('none','processing','ready') NOT NULL DEFAULT 'none',
+  created_at     DATETIME     NOT NULL DEFAULT NOW(),
+  updated_at     DATETIME     NOT NULL DEFAULT NOW() ON UPDATE NOW()
+) CHARACTER SET utf8mb4;
+
+CREATE TABLE IF NOT EXISTS rooms (
+  id              VARCHAR(36)   PRIMARY KEY,
+  hotel_id        VARCHAR(36)   NOT NULL,
+  name            VARCHAR(255)  NOT NULL,
+  description     TEXT          NOT NULL,
+  type            ENUM('standard','deluxe','suite','family','dormitory') NOT NULL,
+  capacity        INT           NOT NULL DEFAULT 2,
+  price_per_night DECIMAL(10,2) NOT NULL,
+  discount_rate   DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  images          JSON          NOT NULL,
+  amenities       JSON          NOT NULL,
+  is_available    TINYINT(1)    NOT NULL DEFAULT 1,
+  created_at      DATETIME      NOT NULL DEFAULT NOW(),
+  updated_at      DATETIME      NOT NULL DEFAULT NOW() ON UPDATE NOW(),
+  FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+) CHARACTER SET utf8mb4;
+
+CREATE TABLE IF NOT EXISTS wishlists (
+  id         VARCHAR(36) PRIMARY KEY,
+  user_id    VARCHAR(36) NOT NULL,
+  hotel_id   VARCHAR(36) NOT NULL,
+  created_at DATETIME    NOT NULL DEFAULT NOW(),
+  UNIQUE KEY uq_user_hotel (user_id, hotel_id),
+  FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+) CHARACTER SET utf8mb4;
+
+CREATE INDEX idx_hotels_city     ON hotels(city);
+CREATE INDEX idx_hotels_region   ON hotels(region);
+CREATE INDEX idx_hotels_category ON hotels(category);
+CREATE INDEX idx_rooms_hotel     ON rooms(hotel_id);
+CREATE INDEX idx_wishlists_user  ON wishlists(user_id);
 
 INSERT IGNORE INTO hotels
   (id, host_id, name, description, category, address, city, region,
@@ -147,7 +211,33 @@ INSERT IGNORE INTO wishlists (id, user_id, hotel_id) VALUES
   (UUID(),'11111111-0000-0000-0000-000000000005','22222222-0000-0000-0000-000000000003');
 
 -- ── booking_db ───────────────────────────────────────────────
+CREATE DATABASE IF NOT EXISTS booking_db CHARACTER SET utf8mb4;
 USE booking_db;
+
+CREATE TABLE IF NOT EXISTS bookings (
+  id               VARCHAR(36)   PRIMARY KEY,
+  user_id          VARCHAR(36)   NOT NULL,
+  host_id          VARCHAR(36)   NOT NULL DEFAULT '',
+  hotel_id         VARCHAR(36)   NOT NULL,
+  hotel_name       VARCHAR(255)  NOT NULL DEFAULT '',
+  hotel_address    TEXT,
+  hotel_images     TEXT,
+  room_id          VARCHAR(36)   NOT NULL,
+  room_name        VARCHAR(255)  NOT NULL DEFAULT '',
+  room_type        VARCHAR(50)   NOT NULL DEFAULT 'standard',
+  check_in_date    DATE          NOT NULL,
+  check_out_date   DATE          NOT NULL,
+  guests           INT           NOT NULL DEFAULT 1,
+  total_price      DECIMAL(10,2) NOT NULL,
+  status           ENUM('pending','confirmed','cancelled','completed') NOT NULL DEFAULT 'pending',
+  special_requests TEXT,
+  created_at       DATETIME      NOT NULL DEFAULT NOW(),
+  updated_at       DATETIME      NOT NULL DEFAULT NOW() ON UPDATE NOW()
+) CHARACTER SET utf8mb4;
+
+CREATE INDEX idx_bookings_user  ON bookings(user_id);
+CREATE INDEX idx_bookings_hotel ON bookings(hotel_id);
+CREATE INDEX idx_bookings_room  ON bookings(room_id);
 
 INSERT IGNORE INTO bookings
   (id, user_id, host_id, hotel_id, hotel_name, hotel_address,
@@ -179,7 +269,26 @@ VALUES
    UUID(),'스탠다드 룸','standard','2025-05-10','2025-05-12',2,140000,'cancelled');
 
 -- ── review_db ─────────────────────────────────────────────────
+CREATE DATABASE IF NOT EXISTS review_db CHARACTER SET utf8mb4;
 USE review_db;
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id          VARCHAR(36)  PRIMARY KEY,
+  user_id     VARCHAR(36)  NOT NULL,
+  user_name   VARCHAR(100) NOT NULL DEFAULT '',
+  user_avatar TEXT,
+  hotel_id    VARCHAR(36)  NOT NULL,
+  booking_id  VARCHAR(36)  NOT NULL,
+  rating      TINYINT      NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  title       VARCHAR(255) NOT NULL,
+  content     TEXT         NOT NULL,
+  images      JSON         NOT NULL,
+  created_at  DATETIME     NOT NULL DEFAULT NOW(),
+  updated_at  DATETIME     NOT NULL DEFAULT NOW() ON UPDATE NOW()
+) CHARACTER SET utf8mb4;
+
+CREATE INDEX idx_reviews_hotel ON reviews(hotel_id);
+CREATE INDEX idx_reviews_user  ON reviews(user_id);
 
 INSERT IGNORE INTO reviews
   (id, user_id, user_name, hotel_id, booking_id, rating, title, content, images)

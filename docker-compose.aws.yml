@@ -17,9 +17,9 @@ services:
   # ── Services ──────────────────────────────────────────────────────────────────
   auth-service:
     build:
-      context: ./services/auth-service
+      context: ./backend/auth-service
       dockerfile: Dockerfile
-    env_file: ./services/auth-service/.env.aws
+    env_file: ./backend/auth-service/.env.aws
     ports:
       - '3001:3001'
     volumes:
@@ -30,9 +30,9 @@ services:
 
   hotel-service:
     build:
-      context: ./services/hotel-service
+      context: ./backend/hotel-service
       dockerfile: Dockerfile
-    env_file: ./services/hotel-service/.env.aws
+    env_file: ./backend/hotel-service/.env.aws
     ports:
       - '3002:3002'
     volumes:
@@ -43,9 +43,9 @@ services:
 
   booking-service:
     build:
-      context: ./services/booking-service
+      context: ./backend/booking-service
       dockerfile: Dockerfile
-    env_file: ./services/booking-service/.env.aws
+    env_file: ./backend/booking-service/.env.aws
     depends_on:
       - hotel-service
     ports:
@@ -58,9 +58,9 @@ services:
 
   review-service:
     build:
-      context: ./services/review-service
+      context: ./backend/review-service
       dockerfile: Dockerfile
-    env_file: ./services/review-service/.env.aws
+    env_file: ./backend/review-service/.env.aws
     depends_on:
       - hotel-service
       - booking-service

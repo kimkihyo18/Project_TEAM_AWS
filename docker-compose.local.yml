@@ -23,7 +23,7 @@ services:
       - '3306:3306'
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database/scripts/init-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-plocalpassword']
       interval: 10s
@@ -54,9 +54,9 @@ services:
   # ── Services ──────────────────────────────────────────────────────────────────
   auth-service:
     build:
-      context: ./services/auth-service
+      context: ./backend/auth-service
       dockerfile: Dockerfile
-    env_file: ./services/auth-service/.env.local
+    env_file: ./backend/auth-service/.env.local
     depends_on:
       mysql:
         condition: service_healthy
@@ -70,9 +70,9 @@ services:
 
   hotel-service:
     build:
-      context: ./services/hotel-service
+      context: ./backend/hotel-service
       dockerfile: Dockerfile
-    env_file: ./services/hotel-service/.env.local
+    env_file: ./backend/hotel-service/.env.local
     depends_on:
       mysql:
         condition: service_healthy
@@ -90,9 +90,9 @@ services:
 
   booking-service:
     build:
-      context: ./services/booking-service
+      context: ./backend/booking-service
       dockerfile: Dockerfile
-    env_file: ./services/booking-service/.env.local
+    env_file: ./backend/booking-service/.env.local
     depends_on:
       mysql:
         condition: service_healthy
@@ -108,9 +108,9 @@ services:
 
   review-service:
     build:
-      context: ./services/review-service
+      context: ./backend/review-service
       dockerfile: Dockerfile
-    env_file: ./services/review-service/.env.local
+    env_file: ./backend/review-service/.env.local
     depends_on:
       mysql:
         condition: service_healthy
