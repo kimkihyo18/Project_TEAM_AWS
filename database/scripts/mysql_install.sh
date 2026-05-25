@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euxo pipefail
 
-rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
-rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
-rm -f /etc/yum.repos.d/mysql*
 dnf install -y https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
 dnf install -y mysql-community-server
+
 cat <<EOT > /etc/my.cnf
 [mysqld]
 datadir=/var/lib/mysql
@@ -24,8 +23,10 @@ default-character-set=utf8mb4
 [mysql]
 default-character-set=utf8mb4
 EOT
+
 systemctl enable --now mysqld
 chgrp ec2-user /var/log/mysqld.log
+
 TEMP_PW=$(grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}')
 mysql --connect-expired-password -u root -p$TEMP_PW <<EOT
 CREATE USER 'root'@'%' IDENTIFIED BY 'P@ssw0rd';
