@@ -1,3 +1,10 @@
+-- ============================================================
+-- 전체 DB 초기화 + 시드 데이터
+-- (CREATE DATABASE → CREATE TABLE → INSERT)
+-- 직접 실행 시: run-seed.sh 사용 (bcrypt 해시 자동 주입)
+-- ============================================================
+
+-- ── auth_db ──────────────────────────────────────────────────
 CREATE DATABASE IF NOT EXISTS auth_db CHARACTER SET utf8mb4;
 USE auth_db;
 
@@ -23,6 +30,7 @@ INSERT IGNORE INTO users (id, email, password, name, phone, role) VALUES
 
 
 
+-- ── hotel_db ─────────────────────────────────────────────────
 CREATE DATABASE IF NOT EXISTS hotel_db CHARACTER SET utf8mb4;
 USE hotel_db;
 
@@ -301,3 +309,10 @@ VALUES
   (UUID(),'11111111-0000-0000-0000-000000000004','박지호','22222222-0000-0000-0000-000000000004',UUID(),4,'자연 속에서 힐링','소나무 숲과 바다 소리를 들으며 정말 힐링됐어요. 바베큐도 맛있고 주인분이 친절하셨습니다.','[]'),
   (UUID(),'11111111-0000-0000-0000-000000000006','정현우','22222222-0000-0000-0000-000000000005',UUID(),5,'경주 여행의 절정!','한옥에서 하룻밤 자는 경험이 너무 특별했어요. 아침에 제공되는 한식 아침도 맛있고, 역사 도시 경주를 느낄 수 있었습니다.','[]'),
   (UUID(),'11111111-0000-0000-0000-000000000005','최수아','22222222-0000-0000-0000-000000000001',UUID(),3,'가격 대비 아쉬운 부분도 있어요','전체적으로 좋은 호텔이지만 가격이 좀 비싼 편이에요. 조식 퀄리티는 좋았고 위치는 최고였습니다.','[]');
+
+-- ── 권한 부여 ─────────────────────────────────────────────────
+GRANT ALL PRIVILEGES ON auth_db.*    TO 'root'@'%';
+GRANT ALL PRIVILEGES ON hotel_db.*   TO 'root'@'%';
+GRANT ALL PRIVILEGES ON booking_db.* TO 'root'@'%';
+GRANT ALL PRIVILEGES ON review_db.*  TO 'root'@'%';
+FLUSH PRIVILEGES;
