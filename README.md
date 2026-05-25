@@ -57,7 +57,7 @@ sudo dnf install -y nginx git
 sudo systemctl enable --now nginx
 ```
 
-### 1-3. 프로젝트 클론 및 실행
+### 1-3. 프로젝트 클론
 
 ```bash
 git clone --filter=blob:none --sparse https://github.com/yubin05/Project_TEAM_AWS.git
@@ -66,7 +66,11 @@ git sparse-checkout set frontend nginx
 
 # 백엔드 서비스 EC2 Private IP로 교체
 sudo vi nginx/nginx.frontend.conf
+```
 
+### 1-4. 서비스 가동
+
+```bash
 sudo cp nginx/nginx.frontend.conf /etc/nginx/nginx.conf
 
 # 설정 문법 확인
