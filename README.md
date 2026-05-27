@@ -498,8 +498,6 @@ curl http://localhost:3004/health
 
 ```
 Project_TEAM_AWS/
-├── docker-compose.local.yml        로컬 전체 스택 실행
-├── docker-compose.aws.yml          AWS 연동 버전
 ├── nginx/
 │   └── nginx.conf                  API Gateway + 정적 파일 서빙
 ├── elasticmq/
@@ -632,9 +630,8 @@ Project_TEAM_AWS/
 
 ### 인프라
 - nginx (API Gateway + 정적 파일)
-- Docker + Docker Compose
-- ElasticMQ (로컬 SQS 대체)
-- MySQL 8.0 (서비스별 독립 DB)
+- Docker (서비스별 개별 컨테이너)
+- MySQL 8.0 (서비스별 독립 DB, 전용 EC2 분리)
 
 ---
 
@@ -668,16 +665,6 @@ Project_TEAM_AWS/
 
 **SES Sandbox 제한**: 인증된 이메일 주소로만 수신 가능. 실서비스 전 Production 액세스 신청 필요.
 
-### EC2 배포
-
-```bash
-git clone https://github.com/yubin05/Project_TEAM_AWS.git
-cd Project_TEAM_AWS
-
-# 각 서비스 .env.aws 작성 후
-docker compose -f docker-compose.aws.yml up --build -d
-```
-
 ### 포트 요약
 
 | 서비스 | 포트 |
@@ -687,6 +674,4 @@ docker compose -f docker-compose.aws.yml up --build -d
 | hotel-service | 3002 |
 | booking-service | 3003 |
 | review-service | 3004 |
-| MySQL | 3306 |
-| DynamoDB Local | 8000 |
-| ElasticMQ | 9324 |
+| MySQL (전용 EC2) | 3306 |
