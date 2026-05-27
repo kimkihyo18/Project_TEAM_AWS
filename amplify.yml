@@ -1,19 +1,21 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        # Amplify 환경변수 API_URL로 백엔드 주소 주입
-        # Amplify 콘솔 → 환경변수에서 API_URL 설정 필요
-        # 예) API_URL = https://api.yourdomain.com
-        - |
-          echo "window.__API_BASE__ = '${API_URL}/api';" > frontend/public/js/config.js
-    build:
-      commands:
-        - echo "Static site - no build required"
-  artifacts:
-    baseDirectory: frontend/public
-    files:
-      - '**/*'
-  cache:
-    paths: []
+applications:
+  - appRoot: frontend        # frontend/ 하위 변경 시만 빌드 트리거
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            # Amplify 환경변수 API_URL로 백엔드 주소 주입
+            # Amplify 콘솔 → 환경변수에서 API_URL 설정 필요
+            # 예) API_URL = https://xxxxxxxxxx.execute-api.ap-northeast-2.amazonaws.com
+            - |
+              echo "window.__API_BASE__ = '${API_URL}/api';" > public/js/config.js
+        build:
+          commands:
+            - echo "Static site - no build required"
+      artifacts:
+        baseDirectory: public   # appRoot 기준 상대경로 (= frontend/public)
+        files:
+          - '**/*'
+      cache:
+        paths: []

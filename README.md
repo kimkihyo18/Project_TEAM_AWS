@@ -7,21 +7,53 @@
 
 ## 아키텍처
 
+### EC2 배포 구조 (현재)
+
 ```
 [Browser]
     │
     ▼
-[nginx :80]  ── 정적 파일 (frontend/public)
+[Frontend EC2 — nginx :80]  ── 정적 파일 (frontend/public)
     │
-    ├── /api/auth/*          → auth-service    :3001  (auth_db)
-    ├── /api/reviews/*       → review-service  :3004  (review_db)
-    ├── /api/hotels/*/reviews→ review-service  :3004
-    ├── /api/bookings/*      → booking-service :3003  (booking_db)
-    └── /api/*               → hotel-service   :3002  (hotel_db)
+    ├── /api/auth/*          → auth-service EC2    :3001  (auth_db)
+    ├── /api/reviews/*       → review-service EC2  :3004  (review_db)
+    ├── /api/hotels/*/reviews→ review-service EC2  :3004
+    ├── /api/bookings/*      → booking-service EC2 :3003  (booking_db)
+    └── /api/*               → hotel-service EC2   :3002  (hotel_db)
 
-[ElasticMQ :9324]  ── SQS 로컬 대체 (리뷰 → 평점 업데이트)
-[MySQL :3306]      ── 4개 DB (auth_db / hotel_db / booking_db / review_db)
-[DynamoDB Local :8000]
+[ElasticMQ :9324]  ── SQS 로컬 대체 (hotel EC2에서 실행)
+[MySQL EC2 :3306]  ── 4개 DB (auth_db / hotel_db / booking_db / review_db)
+```
+
+### AWS 최종 구조 (목표)
+
+```
+[Browser]
+    │
+    ├── Amplify ── 프론트엔드 정적 파일 (CDN)
+    │
+    └── WAF
+          ↓
+     API Gateway (HTTP API)
+     ├── Cognito JWT Authorizer
+     ├── /auth/*       → auth-service
+     ├── /hotels/*     → hotel-service
+     ├── /bookings/*   → booking-service
+     └── /reviews/*    → review-service
+          ↓ (VPC Link)
+         ALB (internal)
+          ↓
+     ECS Fargate
+     ├── auth-service    :3001  ── Cognito 토큰 검증
+     ├── hotel-service   :3002  ── Bedrock / SQS Consumer ←─ SQS rating-queue
+     ├── booking-service :3003  ── SQS Publisher ──────────→ SQS booking-queue
+     └── review-service  :3004  ── SQS Publisher ──────────→ SQS rating-queue
+          ↓
+     RDS MySQL / DynamoDB / S3 / Bedrock
+
+     SQS booking-queue → Lambda ──→ SES (예약 확정 이메일)
+     S3 업로드 이벤트  → Lambda ──→ S3 (썸네일 리사이즈)
+     Cognito 회원가입  → Lambda ──→ RDS auth_db (유저 프로필 초기화)
 ```
 
 ### 서비스 간 통신
@@ -30,10 +62,12 @@
 |-----------|------|------|
 | booking-service → hotel-service | HTTP `x-internal-secret` | 예약 시 객실 정보 조회 |
 | review-service → booking-service | HTTP `x-internal-secret` | 리뷰 작성 시 예약 확인 |
-| review-service → ElasticMQ | SQS Publish | 리뷰 생성/삭제 시 평점 갱신 요청 |
-| hotel-service ← ElasticMQ | SQS Consume | 메시지 수신 후 review-service에서 평점 집계 후 DB 업데이트 |
-| booking-service → ElasticMQ | SQS Publish | 예약 확정 시 이메일 알림 요청 |
+| review-service → SQS rating-queue | SQS Publish | 리뷰 생성/삭제 시 평점 갱신 요청 |
+| hotel-service ← SQS rating-queue | SQS Consume | 메시지 수신 후 평점 집계 후 DB 업데이트 |
+| booking-service → SQS booking-queue | SQS Publish | 예약 확정 시 이메일 알림 요청 |
 | Lambda ← SQS booking-queue | SQS Trigger | 메시지 수신 후 AWS SES로 예약 확정 이메일 발송 |
+
+> 로컬/EC2 환경에서는 SQS 대신 **ElasticMQ** 컨테이너로 대체 (`SQS_ENDPOINT=http://elasticmq:9324`)
 
 ---
 
@@ -628,50 +662,97 @@ Project_TEAM_AWS/
 - Azure Maps SDK v3 (숙소 위치 지도)
 - HLS.js (영상 스트리밍)
 
-### 인프라
-- nginx (API Gateway + 정적 파일)
-- Docker (서비스별 개별 컨테이너)
+### 인프라 (EC2 배포)
+- nginx (API Gateway + 정적 파일, Frontend EC2)
+- Docker + Docker Compose (서비스별 개별 컨테이너)
 - MySQL 8.0 (서비스별 독립 DB, 전용 EC2 분리)
+- ElasticMQ (SQS 로컬 대체, hotel EC2)
+
+### 인프라 (AWS 배포)
+- Amplify (프론트엔드 CDN)
+- WAF + API Gateway (진입점, Cognito JWT 인증)
+- ECS Fargate + ECR (컨테이너 실행)
+- ALB (internal, ECS 라우팅)
+- RDS MySQL / DynamoDB / SQS / S3
+- Lambda (이메일 발송 / 이미지 리사이즈 / Cognito 후처리)
+- CodePipeline v2 + CodeBuild + CodeDeploy (CI/CD)
 
 ---
 
 ## AWS 배포 (예정)
 
+> 상세 인프라 구성은 [docs/aws-infrastructure.md](docs/aws-infrastructure.md) 참고
+
 ### 필요한 AWS 리소스
 
-- **Cognito**: User Pool + `custom:role` 속성
-- **RDS**: MySQL 8.0, 4개 DB (auth_db / hotel_db / booking_db / review_db)
-- **SQS**: `rating-queue`, `booking-queue`
-- **SES**: 발신 이메일 인증 (Sandbox → Production 신청 필요)
-- **Lambda**: `booking-notification` 함수 (`lambda/booking-notification/index.mjs`)
-  - 트리거: SQS `booking-queue`
-  - IAM Role: `ses:SendEmail` + `sqs:ReceiveMessage` / `sqs:DeleteMessage` / `sqs:GetQueueAttributes`
-  - 환경변수: `FROM_EMAIL`, `AWS_REGION`
-- **Secrets Manager**: 서비스별 시크릿 (`travel-app/auth-service` 등)
-- **Bedrock**: Claude 3 Haiku 모델 액세스 활성화
-- **CloudWatch**: 서비스별 로그 그룹 (`/travel-app/auth-service` 등)
+| 서비스 | 역할 |
+|---|---|
+| **Amplify** | 프론트엔드 정적 파일 호스팅 + GitHub 자동 배포 (`appRoot: frontend`) |
+| **WAF** | SQL Injection, XSS 차단 / Rate Limiting (API Gateway에 연결) |
+| **API Gateway** | HTTP API 엔드포인트 + Cognito JWT Authorizer + VPC Link |
+| **ALB** | VPC 내부 트래픽 로드밸런싱 (internal, ECS Target Group 라우팅) |
+| **ECS Fargate** | 4개 마이크로서비스 컨테이너 실행 |
+| **ECR** | 서비스별 Docker 이미지 저장소 |
+| **Cognito** | User Pool + `custom:role` 속성 + Post Confirmation Lambda 트리거 |
+| **RDS MySQL** | MySQL 8.0, 4개 DB (auth_db / hotel_db / booking_db / review_db) |
+| **DynamoDB** | 호텔 검색 캐시 (`TravelBookingCache`) |
+| **SQS** | `rating-queue` (평점 갱신), `booking-queue` (예약 이메일) |
+| **SES** | 예약 확정 이메일 발송 (Sandbox → Production 신청 필요) |
+| **S3** | 호텔 이미지 원본 / 썸네일 / 영상 / 로그 보관 |
+| **Bedrock** | Claude 3 Haiku 모델 액세스 활성화 |
+| **Secrets Manager** | 서비스별 시크릿 (`travel-app/auth-service` 등) |
+| **CloudWatch** | 서비스별 로그 그룹 (`/travel-app/auth-service` 등) |
+
+### Lambda 구성
+
+| 함수 | 트리거 | 역할 | IAM 권한 |
+|---|---|---|---|
+| `booking-notification` | SQS `booking-queue` | 예약 확정 이메일 발송 | `ses:SendEmail`, `sqs:ReceiveMessage` |
+| `image-resize` | S3 업로드 이벤트 | 호텔 이미지 썸네일 생성 | `s3:GetObject`, `s3:PutObject` |
+| `cognito-post-confirm` | Cognito Post Confirmation | auth_db 유저 프로필 초기화 | `rds-data:ExecuteStatement` |
 
 ### 이메일 알림 흐름
 
 ```
-예약 생성 (POST /api/bookings)
+예약 생성 (POST /bookings)
     → booking-service INSERT 성공
         → SQS booking-queue 메시지 발행
             → Lambda (booking-notification) SQS 트리거
                 → AWS SES 이메일 발송 → 사용자 이메일
 ```
 
-> 로컬 테스트 시 ElasticMQ의 `booking-queue`까지만 확인 가능하며, 실제 이메일 발송은 AWS 배포 후 SES에서 동작합니다.
+> **SES Sandbox 제한**: 인증된 이메일 주소로만 수신 가능. 실서비스 전 Production 액세스 신청 필요.
 
-**SES Sandbox 제한**: 인증된 이메일 주소로만 수신 가능. 실서비스 전 Production 액세스 신청 필요.
+### CI/CD 경로 필터 (모노레포)
+
+| push 경로 | Amplify | CodePipeline |
+|---|---|---|
+| `frontend/**` | ✅ 빌드 | ❌ 스킵 |
+| `backend/**` | ❌ 스킵 | ✅ 빌드 |
+| `docs/**`, `*.md` | ❌ 스킵 | ❌ 스킵 |
+
+- **Amplify**: `amplify.yml`의 `appRoot: frontend`로 경로 필터
+- **CodePipeline v2**: `filePaths.Includes: backend/**` 트리거 필터
+
+### 보안 구성
+
+```
+인터넷
+  └── WAF (악성 요청 차단)
+        └── API Gateway (HTTPS, Cognito JWT 검증)
+              └── VPC Link
+                    └── ALB internal (VPC Link에서만 인바운드)
+                          └── ECS (ALB에서만 인바운드)
+                                └── RDS (ECS에서만 3306 허용)
+```
 
 ### 포트 요약
 
-| 서비스 | 포트 |
-|--------|------|
-| nginx (진입점) | 80 |
-| auth-service | 3001 |
-| hotel-service | 3002 |
-| booking-service | 3003 |
-| review-service | 3004 |
-| MySQL (전용 EC2) | 3306 |
+| 서비스 | EC2 배포 | AWS 배포 |
+|--------|----------|----------|
+| 진입점 | nginx :80 (Frontend EC2) | API Gateway (HTTPS) |
+| auth-service | :3001 | ECS :3001 |
+| hotel-service | :3002 | ECS :3002 |
+| booking-service | :3003 | ECS :3003 |
+| review-service | :3004 | ECS :3004 |
+| DB | MySQL EC2 :3306 | RDS :3306 (private) |
