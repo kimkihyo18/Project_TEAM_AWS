@@ -356,7 +356,8 @@ Resources:
     Type: AWS::EC2::Instance
     DependsOn: PrivateDBNATRoute
     Properties:
-      InstanceType: t3.small
+      # InstanceType: t3.small
+      InstanceType: t3.micro
       ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyName
       IamInstanceProfile: !Ref SSMInstanceProfile
@@ -521,7 +522,8 @@ Resources:
     Type: AWS::EC2::Instance
     DependsOn: PrivateBackendNATRoute
     Properties:
-      InstanceType: t3.small
+      # InstanceType: t3.small
+      InstanceType: t3.micro
       ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyName
       IamInstanceProfile: !Ref SSMInstanceProfile
