@@ -28,3 +28,10 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "db_password" {
+  description = "RDS MySQL 관리자 비밀번호"
+  type        = string
+  sensitive   = true
+  default     = "Change-me-db-password1!"
+}

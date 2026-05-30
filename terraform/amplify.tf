@@ -9,7 +9,7 @@ resource "aws_amplify_app" "frontend" {
   # build_spec 미지정 시 Amplify가 레포에서 amplify.yml을 직접 읽음
 
   environment_variables = {
-    API_URL = "http://${aws_eip.frontend.public_ip}"
+    API_URL = aws_apigatewayv2_api.main.api_endpoint
   }
 
   # frontend/ 외 경로 변경 시 빌드 스킵 (CodePipeline과 역할 분리)

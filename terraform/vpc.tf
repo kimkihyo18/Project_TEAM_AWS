@@ -89,3 +89,40 @@ resource "aws_route_table_association" "private_db" {
   subnet_id      = aws_subnet.private_db.id
   route_table_id = aws_route_table.private_db.id
 }
+
+# ── 2번째 AZ 서브넷 (ALB 2 AZ 필수, RDS 서브넷 그룹 2 AZ 필수) ────────────────
+resource "aws_subnet" "public_2" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.1.4.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+  tags              = { Name = "ThreeTier-PublicSN-2" }
+}
+
+resource "aws_subnet" "private_backend_2" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.1.5.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+  tags              = { Name = "ThreeTier-PrivateBackendSN-2" }
+}
+
+resource "aws_subnet" "private_db_2" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.1.6.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+  tags              = { Name = "ThreeTier-PrivateDBSN-2" }
+}
+
+resource "aws_route_table_association" "public_2" {
+  subnet_id      = aws_subnet.public_2.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private_backend_2" {
+  subnet_id      = aws_subnet.private_backend_2.id
+  route_table_id = aws_route_table.private_backend.id
+}
+
+resource "aws_route_table_association" "private_db_2" {
+  subnet_id      = aws_subnet.private_db_2.id
+  route_table_id = aws_route_table.private_db.id
+}
