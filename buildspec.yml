@@ -1,0 +1,40 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: ap-northeast-2
+    ECR_REGISTRY: 956718674105.dkr.ecr.ap-northeast-2.amazonaws.com
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+
+  build:
+    commands:
+      - docker build -t $ECR_REGISTRY/auth-service:$IMAGE_TAG ./backend/auth-service
+      - docker build -t $ECR_REGISTRY/hotel-service:$IMAGE_TAG ./backend/hotel-service
+      - docker build -t $ECR_REGISTRY/booking-service:$IMAGE_TAG ./backend/booking-service
+      - docker build -t $ECR_REGISTRY/review-service:$IMAGE_TAG ./backend/review-service
+      - docker tag $ECR_REGISTRY/auth-service:$IMAGE_TAG $ECR_REGISTRY/auth-service:latest
+      - docker tag $ECR_REGISTRY/hotel-service:$IMAGE_TAG $ECR_REGISTRY/hotel-service:latest
+      - docker tag $ECR_REGISTRY/booking-service:$IMAGE_TAG $ECR_REGISTRY/booking-service:latest
+      - docker tag $ECR_REGISTRY/review-service:$IMAGE_TAG $ECR_REGISTRY/review-service:latest
+
+  post_build:
+    commands:
+      - docker push $ECR_REGISTRY/auth-service:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/auth-service:latest
+      - docker push $ECR_REGISTRY/hotel-service:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/hotel-service:latest
+      - docker push $ECR_REGISTRY/booking-service:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/booking-service:latest
+      - docker push $ECR_REGISTRY/review-service:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/review-service:latest
+      - printf '[{"name":"auth-service","imageUri":"%s"}]' $ECR_REGISTRY/auth-service:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
