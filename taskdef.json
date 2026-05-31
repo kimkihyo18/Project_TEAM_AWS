@@ -1,0 +1,39 @@
+{
+  "family": "auth-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::956718674105:role/ThreeTier-ECS-TaskExecution-Role",
+  "containerDefinitions": [
+    {
+      "name": "auth-service",
+      "image": "956718674105.dkr.ecr.ap-northeast-2.amazonaws.com/auth-service:latest",
+      "portMappings": [
+        {
+          "containerPort": 3001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {"name": "APP_MODE", "value": "local"},
+        {"name": "PORT", "value": "3001"},
+        {"name": "AWS_REGION", "value": "ap-northeast-2"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/auth-service",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3
+      }
+    }
+  ]
+}
