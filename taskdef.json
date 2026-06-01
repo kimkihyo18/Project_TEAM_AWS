@@ -16,9 +16,16 @@
         }
       ],
       "environment": [
-        {"name": "APP_MODE", "value": "local"},
-        {"name": "PORT", "value": "3001"},
-        {"name": "AWS_REGION", "value": "ap-northeast-2"}
+        {"name": "APP_MODE",        "value": "local"},
+        {"name": "PORT",            "value": "3001"},
+        {"name": "AWS_REGION",      "value": "ap-northeast-2"},
+        {"name": "DB_HOST",         "value": "threetier-mysql.clu8oyeocrfy.ap-northeast-2.rds.amazonaws.com"},
+        {"name": "DB_PORT",         "value": "3306"},
+        {"name": "DB_USER",         "value": "admin"},
+        {"name": "DB_PASSWORD",     "value": "Test-db-password1!"},
+        {"name": "DB_NAME",         "value": "auth_db"},
+        {"name": "JWT_SECRET",      "value": "test-jwt-secret-32chars-minimum1"},
+        {"name": "INTERNAL_SECRET", "value": "test-internal-secret-value"}
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
